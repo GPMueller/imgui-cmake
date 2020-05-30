@@ -6,7 +6,7 @@
 namespace fonts
 {
 
-ImFont * default()
+ImFont * imgui_default()
 {
     ImGuiIO & io = ImGui::GetIO();
     return io.Fonts->AddFontDefault();

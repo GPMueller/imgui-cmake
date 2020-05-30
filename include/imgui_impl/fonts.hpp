@@ -7,7 +7,7 @@
 namespace fonts
 {
 
-ImFont * default();
+ImFont * imgui_default();
 ImFont * cousine_regular();
 
 } // namespace fonts
