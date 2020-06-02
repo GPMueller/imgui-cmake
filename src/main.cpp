@@ -3,33 +3,46 @@
 #include <imgui_impl/opengl3.h>
 #include <imgui_impl/fonts.hpp>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+
+#include <fmt/format.h>
 
 #include <stdio.h>
 #include <cmath>
-#include <iostream>
 
 static void glfw_error_callback( int error, const char * description )
 {
-    fprintf( stderr, "Glfw Error %d: %s\n", error, description );
+    fmt::print( "Glfw Error {}: {}\n", error, description );
 }
 
-static bool drag_main_window = false;
-static double wx_start, wy_start;
-static double cx_start, cy_start;
+GLFWwindow * g_window;
+ImVec4 clear_color       = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
+bool show_demo_window    = true;
+bool show_another_window = false;
+
+#ifdef __EMSCRIPTEN__
+EM_JS( int, canvas_get_width, (), { return Module.canvas.width; } );
+
+EM_JS( int, canvas_get_height, (), { return Module.canvas.height; } );
+
+EM_JS( void, resizeCanvas, (), { js_resizeCanvas(); } );
+#endif
 
 static void show_menu_bar( GLFWwindow * window )
 {
-    if( !ImGui::IsMouseDown( 0 ) )
-        drag_main_window = false;
-
     if( ImGui::BeginMainMenuBar() )
     {
         if( ImGui::BeginMenu( "File" ) )
         {
+            if( ImGui::MenuItem( "Open" ) )
+            {
+            }
             ImGui::EndMenu();
         }
         if( ImGui::BeginMenu( "Edit" ) )
@@ -52,50 +65,11 @@ static void show_menu_bar( GLFWwindow * window )
             }
             ImGui::EndMenu();
         }
-
-        ImGui::SameLine( ImGui::GetWindowContentRegionMax().x - 20 );
-        if( ImGui::Button( "X" ) )
-        {
-            glfwSetWindowShouldClose( window, true );
-        }
-
-        if( ImGui::GetIO().WantCaptureMouse )
-        {
-            int wx_current, wy_current;
-            glfwGetWindowPos( window, &wx_current, &wy_current );
-
-            double cx_current, cy_current;
-            glfwGetCursorPos( window, &cx_current, &cy_current );
-            cx_current += wx_current;
-            cy_current += wy_current;
-
-            if( ImGui::IsWindowHovered( ImGuiHoveredFlags_None ) )
-            {
-                if( ImGui::IsMouseClicked( 0 ) )
-                {
-                    drag_main_window = true;
-                    wx_start         = wx_current;
-                    wy_start         = wy_current;
-                    cx_start         = cx_current;
-                    cy_start         = cy_current;
-                }
-            }
-
-            if( ImGui::IsMouseDragging( 0 ) )
-            {
-                if( drag_main_window )
-                {
-                    glfwSetWindowPos(
-                        window, int( wx_start + cx_current - cx_start ), int( wy_start + cy_current - cy_start ) );
-                }
-            }
-        }
-
         ImGui::EndMainMenuBar();
     }
 }
 
-void ApplyCharcoalStyle( ImGuiStyle * dst = NULL )
+void apply_charcoal_style( ImGuiStyle * dst = NULL )
 {
     ImGuiStyle * style = dst ? dst : &ImGui::GetStyle();
     ImVec4 * colors    = style->Colors;
@@ -151,124 +125,174 @@ void ApplyCharcoalStyle( ImGuiStyle * dst = NULL )
     style->WindowRounding    = 4.0f;
 }
 
-int main()
+void loop()
 {
-    // Setup window
+#ifdef __EMSCRIPTEN__
+    int width  = canvas_get_width();
+    int height = canvas_get_height();
+
+    glfwSetWindowSize( g_window, width, height );
+#endif
+
+    glfwPollEvents();
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    show_menu_bar( g_window );
+
+    // 1. Show a simple window.
+    // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets automatically appears in a window called "Debug".
+    {
+        static float f     = 0.0f;
+        static int counter = 0;
+        ImGui::Text( "Hello, world!" );                // Display some text (you can use a format string too)
+        ImGui::SliderFloat( "float", &f, 0.0f, 1.0f ); // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3( "clear color", (float *)&clear_color ); // Edit 3 floats representing a color
+
+        ImGui::Checkbox( "Demo Window", &show_demo_window ); // Edit bools storing our windows open/close state
+        ImGui::Checkbox( "Another Window", &show_another_window );
+
+        if( ImGui::Button(
+                "Button" ) ) // Buttons return true when clicked (NB: most widgets return true when edited/activated)
+            counter++;
+        ImGui::SameLine();
+        ImGui::Text( "counter = %d", counter );
+
+        ImGui::Text(
+            "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+            ImGui::GetIO().Framerate );
+    }
+
+    // 2. Show another simple window. In most cases you will use an explicit Begin/End pair to name your windows.
+    if( show_another_window )
+    {
+        ImGui::Begin( "Another Window", &show_another_window );
+        ImGui::Text( "Hello from another window!" );
+        if( ImGui::Button( "Close Me" ) )
+            show_another_window = false;
+        ImGui::End();
+    }
+
+    // 3. Show the ImGui demo window. Most of the sample code is in ImGui::ShowDemoWindow(). Read its code to learn more
+    // about Dear ImGui!
+    if( show_demo_window )
+    {
+        ImGui::SetNextWindowPos(
+            ImVec2( 650, 20 ), ImGuiCond_FirstUseEver ); // Normally user code doesn't need/want to call this because
+                                                         // positions are saved in .ini file anyway. Here we just want
+                                                         // to make the demo initial state a bit more friendly!
+        ImGui::ShowDemoWindow( &show_demo_window );
+    }
+
+    ImGui::Render();
+
+    int display_w, display_h;
+    glfwMakeContextCurrent( g_window );
+    glfwGetFramebufferSize( g_window, &display_w, &display_h );
+    glViewport( 0, 0, display_w, display_h );
+    glClearColor( clear_color.x, clear_color.y, clear_color.z, clear_color.w );
+    glClear( GL_COLOR_BUFFER_BIT );
+
+    ImGui_ImplOpenGL3_RenderDrawData( ImGui::GetDrawData() );
+
+    glfwMakeContextCurrent( g_window );
+    glfwSwapBuffers( g_window );
+}
+
+int init()
+{
     glfwSetErrorCallback( glfw_error_callback );
+
     if( !glfwInit() )
+    {
+        fmt::print( "Failed to initialize GLFW\n" );
         return 1;
+    }
+
+    // glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
     glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
-    glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
-    glfwWindowHint( GLFW_DECORATED, false );
-    glfwWindowHint( GLFW_RESIZABLE, true );
+    glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE ); // We don't want the old OpenGL
+    // glfwWindowHint( GLFW_DECORATED, false );
+    // glfwWindowHint( GLFW_RESIZABLE, true );
 #if __APPLE__
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 #endif
-    GLFWwindow * window = glfwCreateWindow( 1280, 720, "ImGui GLFW+OpenGL3 example", NULL, NULL );
-    glfwMakeContextCurrent( window );
+
+    // Open a window and create its OpenGL context
+    int canvasWidth  = 800;
+    int canvasHeight = 600;
+    g_window         = glfwCreateWindow( canvasWidth, canvasHeight, "WebGui Demo", NULL, NULL );
+    glfwMakeContextCurrent( g_window );
     glfwSwapInterval( 1 ); // Enable vsync
 
-    gladLoadGL( (GLADloadfunc)glfwGetProcAddress );
+    if( g_window == NULL )
+    {
+        fmt::print( "Failed to open GLFW window.\n" );
+        glfwTerminate();
+        return -1;
+    }
+
+    gladLoadGL( (GLADloadfunc)glfwGetProcAddress ); // Initialize GLAD
 
     // Setup Dear ImGui binding
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO & io = ImGui::GetIO();
-    (void)io;
 
-    ImGui_ImplGlfw_InitForOpenGL( window, true );
+    ImGui_ImplGlfw_InitForOpenGL( g_window, false );
     ImGui_ImplOpenGL3_Init();
 
     // Setup style
-    ImGui::StyleColorsLight();
-    ApplyCharcoalStyle();
+    // ImGui::StyleColorsDark();
+    // ImGui::StyleColorsClassic();
+    apply_charcoal_style();
 
+    // Load Fonts
     auto font_cousine = fonts::cousine_regular();
+    // ImGui::PushFont( font_cousine );
 
-    bool show_demo_window    = true;
-    bool show_another_window = false;
+    // Cursor callbacks
+    glfwSetMouseButtonCallback( g_window, ImGui_ImplGlfw_MouseButtonCallback );
+    glfwSetScrollCallback( g_window, ImGui_ImplGlfw_ScrollCallback );
+    glfwSetKeyCallback( g_window, ImGui_ImplGlfw_KeyCallback );
+    glfwSetCharCallback( g_window, ImGui_ImplGlfw_CharCallback );
 
-    ImVec4 clear_color = ImVec4( 0.45f, 0.55f, 0.60f, 1.00f );
+#ifdef __EMSCRIPTEN__
+    resizeCanvas();
+#endif
 
-    // Main loop
-    while( !glfwWindowShouldClose( window ) )
-    {
-        glfwPollEvents();
+    return 0;
+}
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        show_menu_bar( window );
-
-        ImGui::PushFont( font_cousine );
-
-        {
-            static float f     = 0.0f;
-            static int counter = 0;
-            ImGui::Text( "Hello, world!" );
-            ImGui::SliderFloat( "float", &f, 0.0f, 1.0f );
-            ImGui::ColorEdit3( "clear color", (float *)&clear_color );
-
-            ImGui::Text( "Windows" );
-            ImGui::Checkbox( "Demo Window", &show_demo_window );
-            ImGui::Checkbox( "Another Window", &show_another_window );
-
-            ImGui::Text( "Font Samples" );
-            ImGui::PushFont( font_cousine );
-            ImGui::Text( "Font Render Test - Cousine: Bit Test.123" );
-            ImGui::Text( "Font Render Test - Cousine: XXXXXXXXXXXX" );
-            ImGui::PopFont();
-
-            if( ImGui::Button( "Button" ) )
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text( "counter = %d", counter );
-
-            ImGui::Text(
-                "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-                ImGui::GetIO().Framerate );
-        }
-
-        if( show_another_window )
-        {
-            ImGui::Begin( "Another Window", &show_another_window );
-            ImGui::Text( "Hello from another window!" );
-            if( ImGui::Button( "Close Me" ) )
-                show_another_window = false;
-            ImGui::End();
-        }
-
-        if( show_demo_window )
-        {
-            ImGui::SetNextWindowPos( ImVec2( 650, 20 ), ImGuiCond_FirstUseEver );
-            ImGui::ShowDemoWindow( &show_demo_window );
-        }
-
-        ImGui::PopFont();
-
-        // OpenGL rendering
-        ImGui::Render();
-        int display_w, display_h;
-        glfwMakeContextCurrent( window );
-        glfwGetFramebufferSize( window, &display_w, &display_h );
-        glViewport( 0, 0, display_w, display_h );
-        glClearColor( clear_color.x, clear_color.y, clear_color.z, clear_color.w );
-        glClear( GL_COLOR_BUFFER_BIT );
-        ImGui_ImplOpenGL3_RenderDrawData( ImGui::GetDrawData() );
-
-        glfwMakeContextCurrent( window );
-        glfwSwapBuffers( window );
-    }
-
+void quit()
+{
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    glfwDestroyWindow( window );
+    glfwDestroyWindow( g_window );
     glfwTerminate();
+}
+
+extern "C" int main( int argc, char ** argv )
+{
+    if( init() != 0 )
+        return 1;
+
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop( loop, 0, 1 );
+#else
+    while( !glfwWindowShouldClose( g_window ) )
+    {
+        loop();
+    }
+#endif
+
+    quit();
 
     return 0;
 }

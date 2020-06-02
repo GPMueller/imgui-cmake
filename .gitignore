@@ -1,5 +1,9 @@
 build/
 
+ui-web/js/
+
+imgui.ini
+
 
 # Created by https://www.gitignore.io/api/osx,c++,linux,cmake,windows,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=osx,c++,linux,cmake,windows,visualstudiocode
