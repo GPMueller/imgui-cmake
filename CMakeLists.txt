@@ -35,6 +35,12 @@ add_library( imgui STATIC ${IMGUI_SOURCES} )
 target_include_directories( imgui PRIVATE ${THIRDPARTY_DIR} ${IMGUI_SRC_DIR} )
 
 
+############################################################
+### fmtlib
+
+add_subdirectory( ${THIRDPARTY_DIR}/fmt )
+
+
 ####################################################
 ### The application
 
@@ -46,5 +52,8 @@ set( MAIN_APP_SOURCES
 
 set( MAIN_APP_NAME imguiapp )
 add_executable( ${MAIN_APP_NAME} ${MAIN_APP_SOURCES} )
-target_include_directories( ${MAIN_APP_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include ${THIRDPARTY_DIR} )
-target_link_libraries( ${MAIN_APP_NAME} imgui glfw )
+target_include_directories( ${MAIN_APP_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${THIRDPARTY_DIR}
+    ${THIRDPARTY_DIR}/fmt/include )
+target_link_libraries( ${MAIN_APP_NAME} imgui glfw fmt::fmt )

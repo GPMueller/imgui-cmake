@@ -7,6 +7,7 @@ Dependencies
 ------------------
 
 * Dear ImGui
+* fmtlib
 * GLFW
 * glad
 * OpenGL 3
