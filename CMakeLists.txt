@@ -28,6 +28,7 @@ set( IMGUI_SOURCES
     ${IMGUI_SRC_DIR}/imgui.cpp
     ${IMGUI_SRC_DIR}/imgui_draw.cpp
     ${IMGUI_SRC_DIR}/imgui_demo.cpp
+    ${IMGUI_SRC_DIR}/imgui_widgets.cpp
     ${THIRDPARTY_DIR}/glad/glad.c )
 
 add_library( imgui STATIC ${IMGUI_SOURCES} )
