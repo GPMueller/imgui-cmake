@@ -4,11 +4,15 @@
 
 #include <imgui/imgui.h>
 
+#include "fontawesome5_icons.h"
+
 namespace fonts
 {
 
-ImFont * imgui_default();
-ImFont * cousine_regular();
+ImFont * imgui_default( float size_px );
+ImFont * cousine_regular( float size_px );
+ImFont * fontawesome_icons( float size_px );
+ImFont * font_combined( float size_px );
 
 } // namespace fonts
 
