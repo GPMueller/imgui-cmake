@@ -3,6 +3,7 @@ build/
 ui-web/js/
 
 imgui.ini
+imgui_state.ini
 
 
 # Created by https://www.gitignore.io/api/osx,c++,linux,cmake,windows,visualstudiocode
