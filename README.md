@@ -1,7 +1,9 @@
 imgui-cmake
 ========================================
 
-A C++11 Dear ImGui app using CMake as build system and GLFW as windowing backend.
+A cross-platform, C++11, Dear ImGui app
+using CMake as build system and GLFW as
+windowing backend.
 
 
 Native application
@@ -12,7 +14,7 @@ Build the app by calling
 ```
 mkdir -p build && cd build
 cmake ..
-make
+cmake --build . -j4
 cd ..
 ```
 
@@ -27,7 +29,7 @@ Then, to build,
 source /path/to/emsdk/emsdk_env.sh
 mkdir -p build && cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE=/path/to/emsdk/emscripten/<version>/cmake/Modules/Platform/Emscripten.cmake
-make
+cmake --build . -j4
 cd ..
 ```
 
